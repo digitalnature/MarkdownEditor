@@ -1,0 +1,34 @@
+
+ Markdown editor - StackOverflow style
+   by digitalnature
+
+     http://digitalnature.eu
+     http://github.com/digitalnature/Markdown-Editor
+
+     Demo: http://dev.digitalnature.eu/jquery/markdown-editor/
+
+ License under GPL and MIT.
+ Initially this was a jQuery port of JS-QuickTags by Alex King, but I eventually ended up using Markdown, so I had to change pretty much everyting.
+ Read more about the Markdown syntax here: http://daringfireball.net/projects/markdown/syntax
+
+
+
+ Usage:
+
+    $('.editor').MarkdownEditor();
+
+
+
+  Change log:
+
+    13 feb. 2012, v0.2  - first public release
+                        - added repo to github (first public release)
+
+    14 jan. 2012, v0.1  - First release (as a WP theme module on digitalnature.eu)
+
+
+  @todos:
+    - add some options
+    - add some kind of localization system (use options maybe?)
+    - generate controls with javascript?
+
