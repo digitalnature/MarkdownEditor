@@ -1,7 +1,7 @@
 /*
 
  jQuery Markdown editor
-   http://github.com/digitalnature/Markdown-Editor
+   https://github.com/digitalnature/MarkdownEditor
 
 */
 
@@ -23,7 +23,6 @@
         // creates a selection inside the textarea
         // if selectionStart = selectionEnd the cursor is set to that point
         setCaretToPos = function(input, selectionStart, selectionEnd){
-
           input.focus();
 
           if(input.setSelectionRange){
@@ -39,28 +38,11 @@
           }
         },
 
-        // returns the current selection from the textarea
-        getTextAreaSelectionRange = function(textArea){
-
-          /*/ IE doesn't provide the properties we're after -- disabled for now
-          if(document.selection){
-            textArea.selectionStart = textArea.value.indexOf(textArea.selectedText);
-            textArea.selectionEnd = textArea.selectionStart + textArea.selectedText.length;
-            if(textArea.selectionStart < 0)
-              textArea.selectionStart = textArea.selectionEnd = 0;
-          }
-          //*/
-
-          return {start: textArea.selectionStart, end: textArea.selectionEnd};
-        },
-
         // indents the textarea selection
-        indentSelection = function(textArea, count, prefix){
-
-          var selection, newValue, range = getTextAreaSelectionRange(textArea);
+        indent = function(textArea, prefix, count){
 
           // extend the selection start until the previous line feed
-          range.start = textArea.value.lastIndexOf('\n', range.start);
+          var selection, newValue, range = {start: textArea.value.lastIndexOf('\n', textArea.selectionStart), end: textArea.selectionEnd};
 
           // if there isn't a line feed before,
           // then extend the selection until the begging of the text
@@ -83,41 +65,35 @@
           // move the selection to a new variable
           selection = '\n' + textArea.value.substring(range.start, range.end) + '\n\n';
 
-          // add 'count' spaces before line feeds
-          selection = selection.replace(/^(?=.+)/mg, Array(count + 1).join(prefix));
-
-          // rebuild the textarea content
           newValue  = textArea.value.substring(0, range.start);
-          newValue += selection;
+          newValue += selection.replace(/^(?=.+)/mg, Array(count + 1).join(prefix));  // add 'count' spaces before line feeds
           newValue += textArea.value.substring(range.end);
 
           textArea.value = newValue;
         },
 
         tags = {
-          bold:   {tagStart: '**', tagEnd: '**',   placeholder: 'Your bold text'},
-          italic: {tagStart: '*',  tagEnd: '*',    placeholder: 'Your emphasized text'},
-          link:   {tagStart: '[',  tagEnd: '][N]', placeholder: 'Add your link title'},
-          image:  {tagStart: '![', tagEnd: '][N]', placeholder: 'Add image description'},
-          quote:  {tagStart: '',   tagEnd: '',     placeholder: '\n' + '> Place quoted text here' + '\n'},
-          pre:    {tagStart: '',   tagEnd: '',     placeholder: '\n' + '    Add your code block here' + '\n'},
-          code:   {tagStart: '`',  tagEnd: '`',    placeholder: 'Add inline code here'},
+          bold:   {start: '**', end: '**',   placeholder: 'Your bold text'},
+          italic: {start: '*',  end: '*',    placeholder: 'Your emphasized text'},
+          link:   {start: '[',  end: '][N]', placeholder: 'Add your link title'},
+          image:  {start: '![', end: '][N]', placeholder: 'Add image description'},
+          quote:  {start: '',   end: '',     placeholder: '\n' + '> Place quoted text here' + '\n'},
+          pre:    {start: '',   end: '',     placeholder: '\n' + '    Add your code block here' + '\n'},
+          code:   {start: '`',  end: '`',    placeholder: 'Add inline code here'},
         };  
 
     return this.each(function(){
-      var txt = $(this)[0],                         // textarea element
+      var txt      = this,                          // textarea element
           controls = $('<div class="controls" />'), // button container
-          resourceCount = 0;                        // track resource count; use to generate index (for links and images)
+          resIdx   = 0;                             // track resource count; use to generate index (for links and images)
 
       $(txt).before(controls.append(
-          '<div class="controls">'
-        + '<a class="c-bold" accesskey="b"><strong>B</strong></a>'
+          '<a class="c-bold" accesskey="b"><strong>B</strong></a>'
         + '<a class="c-italic" accesskey="i"><em>I</em></a>'
         + '<a class="c-link" accesskey="a">LINK</a>'
         + '<a class="c-image" accesskey="m">I<kbd>m</kbd>age</a>'
         + '<a class="c-quote" accesskey="q"><kbd>Q</kbd>uote</a>'
         + '<a class="c-code" accesskey="c"><kbd>C</kbd>ode</a>'
-        + '</div>'        
       ));
 
       $(txt).on('keypress', function(event){
@@ -129,35 +105,35 @@
         event.preventDefault();      
         txt.focus();
 
-        var tag = /c-([^\s]+)/.exec($(this).attr('class'))[1],
-            range = getTextAreaSelectionRange(txt),
-            selectedText = txt.value.substring(range.start, range.end),
+        var tagName       = this.className.substr(2),
+            range         = {start: txt.selectionStart, end: txt.selectionEnd},
+            selectedText  = txt.value.substring(range.start, range.end),
             haveOuterText = $.trim(txt.value.charAt(range.start - 1) + txt.value.charAt(range.end));
 
         // if this is a code tag, decide if it needs to go inline or inside a block
-        tag = (tag === 'code') && ((selectedText.indexOf('\n') !== -1) || (!haveOuterText) || (txt.value.length < 1)) ? 'pre' : tag;
+        tagName = (tagName === 'code') && ((selectedText.indexOf('\n') !== -1) || (!haveOuterText) || (txt.value.length < 1)) ? 'pre' : tagName;
 
-        var trimmedPlaceholder = $.trim(tags[tag].placeholder),
-            spacesRemoved = tags[tag].placeholder.indexOf(trimmedPlaceholder);
+        var tag           = $.extend({}, tags[tagName]),
+            trimmedPh     = $.trim(tag.placeholder),
+            spacesRemoved = tag.placeholder.indexOf(trimmedPh);
 
         // quote placeholder is not trimmed
-        if(tag === 'quote'){
-          trimmedPlaceholder = trimmedPlaceholder.substring(2, trimmedPlaceholder.length);
+        if(tagName === 'quote'){
+          trimmedPh = trimmedPh.substr(2);
           spacesRemoved += 2;
         }
 
         // do nothing if the selection text matches the placeholder text
-        if(selectedText == trimmedPlaceholder)
+        if(selectedText === trimmedPh)
           return true;
 
         // handle link/image requests
-        if($.inArray(tag, ['link', 'image']) !== -1){
-          var url = prompt((tag !== 'image') ? 'Enter the URL' : 'Enter image URL' , 'http://');
+        if($.inArray(tagName, ['link', 'image']) !== -1){
+          var url = prompt((tagName !== 'image') ? 'Enter the URL' : 'Enter image URL' , 'http://');
 
           if(url){
-            resourceCount++;
-            tags[tag].tagEnd = tags[tag].tagEnd = '][' + resourceCount + ']';
-            txt.value += '\n\n' + '  [' + resourceCount + ']: ' + url;
+            tag.end = tag.end.replace('N', ++resIdx);
+            txt.value += '\n\n' + '  [' + resIdx + ']: ' + url;
 
           }else{
             return true;
@@ -166,28 +142,23 @@
 
         // no actual text selection or text selection matches default placeholder text
         if(range.start === range.end){
-          var newStartPos = range.end + tags[tag].tagStart.length + spacesRemoved,
-              newEndPos = range.end + tags[tag].tagStart.length + spacesRemoved + trimmedPlaceholder.length;
-
-          txt.value = txt.value.substring(0, range.end) + tags[tag].tagStart + tags[tag].placeholder + tags[tag].tagEnd + txt.value.substring(range.end, txt.value.length);
-          setCaretToPos(txt, newStartPos, newEndPos);
+          txt.value = txt.value.substring(0, range.end) + tag.start + tag.placeholder + tag.end + txt.value.substring(range.end);
+          setCaretToPos(txt, range.end + tag.start.length + spacesRemoved, range.end + tag.start.length + spacesRemoved + trimmedPh.length);
 
         // we have selected text
         }else{
 
           // code blocks require indenting only
-          if(tag === 'pre'){
-            indentSelection(txt, 4, ' ');
+          if(tagName === 'pre')
+            indent(txt, ' ', 4);
 
           // same with the quotes
-          }else if(tag === 'quote'){
-            indentSelection(txt, 1, '> ');
+          else if(tagName === 'quote')
+            indent(txt, '> ', 1);
 
           // the others need to wrapped between tags
-          }else{
-            var selection = tags[tag].tagStart + selectedText + tags[tag].tagEnd;
-            txt.value = txt.value.replace(selectedText, selection);
-          }
+          else
+            txt.value = txt.value.replace(selectedText, tag.start + selectedText + tag.end);
 
         }
 
