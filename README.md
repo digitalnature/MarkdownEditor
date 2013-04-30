@@ -2,7 +2,7 @@
 
 A StackOverflow-style interface for using Markdown with textareas
 
-## [DEMO](http://dev.digitalnature.eu/jquery/markdown-editor/)
+## [DEMO](http://dev.digitalnature.eu/javascript/jQuery-Markdown-editor/)
 
 ## Usage
 
